@@ -1,59 +1,75 @@
 package com.binary.controller;
-
-import com.binary.model.TreeRecord;
+import com.binary.model.BinarySearchTree;
 import com.binary.service.TreeService;
-import com.binary.service.TreeStorageService;
-import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.stereotype.Controller;
+import org.springframework.ui.Model;
 import org.springframework.web.bind.annotation.*;
-
-import java.util.*;
-
-@RestController
+import java.util.Arrays;
+import java.util.List;
+@Controller
 public class TreeController {
-
-    @Autowired
-    public TreeService treeService;
-
-    @Autowired
-    public TreeStorageService storageService;
-
-    @PostMapping("/process-numbers")
-    public Map<String, Object> processNumbers(@RequestBody Map<String, Object> payload) {
-        // Expecting { "numbers": "5,3,7,2" } or possibly ["5","3","7","2"]
-        Object numbersObj = payload.get("numbers");
-        List<Integer> numbers;
-        if (numbersObj instanceof String) {
-            String[] parts = ((String) numbersObj).split(",");
-            numbers = new ArrayList<>();
-            for (String part : parts) {
-                numbers.add(Integer.parseInt(part.trim()));
-            }
-        } else if (numbersObj instanceof List) {
-            // If frontend sends a list directly
-            numbers = new ArrayList<>();
-            for (Object o : (List<?>) numbersObj) {
-                numbers.add(Integer.parseInt(o.toString()));
-            }
-        } else {
-            throw new IllegalArgumentException("Invalid input format");
-        }
-
-        Map<String, Object> treeJson = treeService.createTree(numbers);
-        storageService.saveTree(numbers, treeJson);
-
-        return treeJson;
+    private final TreeService treeService;
+    public TreeController(TreeService treeService) {
+        this.treeService = treeService;
     }
-
-    @GetMapping("/previous-trees")
-    public List<Map<String, Object>> getPreviousTrees() {
-        List<TreeRecord> records = storageService.getAllTrees();
-        List<Map<String, Object>> result = new ArrayList<>();
-        for (TreeRecord record : records) {
-            Map<String, Object> map = new HashMap<>();
-            map.put("input", record.getInputNumbers());
-            map.put("tree", record.getTreeJson());
-            result.add(map);
+    @GetMapping("/")
+    public String redirectToInputPage() {
+        return "redirect:/enter-numbers/";
+    }
+    @GetMapping("/enter-numbers/")
+    public String showInputPage() {
+        return "enter-numbers";
+    }
+    @PostMapping("/process-numbers")
+    public String processNumbers(@RequestParam String numbers) {
+        List<Integer> numberList = Arrays.stream(numbers.split(","))
+                .map(String::trim)
+                .map(Integer::parseInt)
+                .toList();
+        TreeNode root = null;
+        for (int number : numberList) {
+            root = insert(root, number);
         }
-        return result;
+        String treeJson = serialize(root);
+        BinarySearchTree tree = treeService.saveTree(numbers, treeJson);
+        return "redirect:/tree-visual/" + tree.getId() + "/";
+    }
+    @GetMapping("/tree-visual/{id}/")
+    public String showTreeVisual(@PathVariable Long id, Model model) {
+        BinarySearchTree tree = treeService.getTreeById(id);
+        if (tree == null || tree.getTreeStructure() == null || tree.getTreeStructure().isEmpty()) {
+            throw new RuntimeException("Tree data is missing or invalid.");
+        }
+        model.addAttribute("treeJson", tree.getTreeStructure());
+        return "tree-visual";
+    }
+    private String serialize(TreeNode root) {
+        if (root == null) return "null";
+        StringBuilder sb = new StringBuilder();
+        sb.append("{");
+        sb.append("\"value\":").append(root.value).append(",");
+        sb.append("\"left\":").append(serialize(root.left)).append(",");
+        sb.append("\"right\":").append(serialize(root.right));
+        sb.append("}");
+        return sb.toString();
+    }
+    @GetMapping("/previous-trees")
+    public String showPreviousTrees(Model model) {
+        List<BinarySearchTree> trees = treeService.getAllTrees();
+        model.addAttribute("trees", trees);
+        return "previous-trees";
+    }
+    private TreeNode insert(TreeNode node, int value) {
+        if (node == null) return new TreeNode(value);
+        if (value < node.value) node.left = insert(node.left, value);
+        else node.right = insert(node.right, value);
+        return node;
+    }
+    static class TreeNode {
+        int value;
+        TreeNode left, right;
+        public TreeNode(int value) {
+            this.value = value;
+        }
     }
 }
