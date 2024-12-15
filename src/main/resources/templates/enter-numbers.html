@@ -1,17 +1,122 @@
 <!DOCTYPE html>
-<html xmlns:th="http://www.thymeleaf.org">
+<html>
 <head>
-    <title>Enter Numbers</title>
+    <title>Binary Tree Visualization</title>
+    <style>
+        .tree {
+            display: flex;
+            justify-content: center;
+            align-items: flex-start;
+            flex-direction: column;
+            text-align: center;
+            font-family: Arial, sans-serif;
+        }
+        .node {
+            margin: 10px;
+            display: inline-block;
+            text-align: center;
+        }
+        .node div {
+            border: 2px solid steelblue;
+            border-radius: 50%;
+            padding: 10px;
+            display: inline-block;
+            margin: 5px auto;
+            font-size: 16px;
+            background-color: #f0f8ff;
+        }
+        .children {
+            display: flex;
+            justify-content: space-between;
+            align-items: flex-start;
+            margin-top: -10px;
+        }
+        .link {
+            position: relative;
+            margin-top: -5px;
+            display: flex;
+            justify-content: center;
+        }
+        .link::before {
+            content: '';
+            border-left: 2px solid #ccc;
+            height: 20px;
+            position: absolute;
+            left: 50%;
+            top: -20px;
+        }
+        .link::after {
+            content: '';
+            border-top: 2px solid #ccc;
+            position: absolute;
+            width: 100%;
+            top: -20px;
+            left: 0;
+        }
+    </style>
 </head>
 <body>
-<h1>Enter Numbers</h1>
-<form action="/process-numbers" method="post">
-    <label for="numbers">Numbers (comma-separated):</label>
+<h1>Binary Tree Visualization</h1>
+<form id="number-form">
+    <label for="numbers">Enter numbers (comma-separated):</label>
     <input type="text" id="numbers" name="numbers" required>
     <button type="submit">Submit</button>
 </form>
-<form action="/previous-trees" method="get">
-    <button type="submit">Show Previous</button>
-</form>
+<div id="tree-container" class="tree"></div>
+
+<script>
+    document.getElementById('number-form').addEventListener('submit', function(event) {
+        event.preventDefault();
+        const numbers = document.getElementById('numbers').value;
+        fetch('/process-numbers', {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/x-www-form-urlencoded',
+            },
+            body: new URLSearchParams({ numbers })
+        })
+            .then(response => response.json())
+            .then(data => {
+                const treeContainer = document.getElementById('tree-container');
+                treeContainer.innerHTML = '';
+                const tree = createTree(JSON.parse(data.treeStructure));
+                if (tree) treeContainer.appendChild(tree);
+            })
+            .catch(error => console.error('Error:', error));
+    });
+
+    const createNode = (value) => {
+        const node = document.createElement('div');
+        node.textContent = value;
+        return node;
+    };
+
+    const createTree = (data) => {
+        if (!data) return null;
+
+        const nodeElement = document.createElement('div');
+        nodeElement.className = 'node';
+        nodeElement.appendChild(createNode(data.value));
+
+        const childrenContainer = document.createElement('div');
+        childrenContainer.className = 'children';
+
+        const leftChild = createTree(data.left);
+        const rightChild = createTree(data.right);
+
+        if (leftChild || rightChild) {
+            const link = document.createElement('div');
+            link.className = 'link';
+            nodeElement.appendChild(link);
+
+            if (leftChild) childrenContainer.appendChild(leftChild);
+            if (rightChild) childrenContainer.appendChild(rightChild);
+
+            nodeElement.appendChild(childrenContainer);
+        }
+
+        return nodeElement;
+    };
+</script>
 </body>
 </html>

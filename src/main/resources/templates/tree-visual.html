@@ -6,98 +6,83 @@
         .tree {
             display: flex;
             justify-content: center;
-            align-items: center;
+            align-items: flex-start;
             flex-direction: column;
+            text-align: center;
+            font-family: Arial, sans-serif;
         }
         .node {
-            display: flex;
-            justify-content: center;
-            align-items: center;
             margin: 10px;
-            flex-direction: column;
-            position: relative;
-        }
-        .node div {
-            border: 1px solid steelblue;
-            border-radius: 50%;
-            padding: 10px;
-            margin: 5px;
+            display: inline-block;
             text-align: center;
         }
-        .link {
-            display: flex;
-            justify-content: center;
-            align-items: center;
-            flex-direction: column;
-            position: relative;
-        }
-        .link::before, .link::after {
-            content: '';
-            border-left: 1px solid #ccc;
-            height: 20px;
-            position: absolute;
-        }
-        .link::before {
-            left: 50%;
-            top: -20px;
-        }
-        .link::after {
-            left: 50%;
-            top: 0;
-            height: 20px;
+        .node div {
+            border: 2px solid steelblue;
+            border-radius: 50%;
+            padding: 10px;
+            display: inline-block;
+            margin: 5px auto;
+            font-size: 16px;
+            background-color: #f0f8ff;
         }
         .children {
             display: flex;
             justify-content: space-between;
-            width: 100%;
+            align-items: flex-start;
+            margin-top: -10px;
         }
     </style>
 </head>
 <body>
 <h1>Binary Tree Visual</h1>
 <div id="tree-container" class="tree"></div>
+
 <script>
-    document.addEventListener('DOMContentLoaded', function() {
-        const treeData = JSON.parse(document.getElementById('tree-data').textContent);
+    const treeId = 1; // Replace with dynamic ID if needed
 
-        const createNode = (value) => {
-            const node = document.createElement('div');
-            node.textContent = value;
-            return node;
-        };
+    const createNode = (value) => {
+        const nodeElement = document.createElement('div');
+        nodeElement.textContent = value;
+        nodeElement.className = 'node';
+        return nodeElement;
+    };
 
-        const createTree = (data) => {
-            if (!data) return null;
+    const createTree = (data) => {
+        if (!data) return null;
 
-            const node = document.createElement('div');
-            node.className = 'node';
-            node.appendChild(createNode(data.value));
+        const nodeElement = document.createElement('div');
+        nodeElement.className = 'node';
+        nodeElement.appendChild(createNode(data.value));
 
-            const left = createTree(data.left);
-            const right = createTree(data.right);
+        const childrenContainer = document.createElement('div');
+        childrenContainer.className = 'children';
 
-            if (left || right) {
-                const link = document.createElement('div');
-                link.className = 'link';
-                node.appendChild(link);
+        const leftChild = createTree(data.left);
+        const rightChild = createTree(data.right);
 
-                const children = document.createElement('div');
-                children.className = 'children';
-                if (left) children.appendChild(left);
-                if (right) children.appendChild(right);
-                node.appendChild(children);
+        if (leftChild) childrenContainer.appendChild(leftChild);
+        if (rightChild) childrenContainer.appendChild(rightChild);
+
+        if (childrenContainer.hasChildNodes()) {
+            nodeElement.appendChild(childrenContainer);
+        }
+
+        return nodeElement;
+    };
+
+    fetch(`/api/tree/${treeId}`)
+        .then(response => response.json())
+        .then(data => {
+            const treeContainer = document.getElementById('tree-container');
+            treeContainer.innerHTML = '';
+            const tree = createTree(data);
+            if (tree) {
+                treeContainer.appendChild(tree);
             }
-
-            return node;
-        };
-
-        const treeContainer = document.getElementById('tree-container');
-        const tree = createTree(treeData);
-        if (tree) treeContainer.appendChild(tree);
-    });
-</script>
-<script id="tree-data" type="application/json">
-    /*<![CDATA[*/[[${treeJson}]]/*]]>*/
+        })
+        .catch(error => {
+            console.error('Error fetching tree data:', error);
+        });
 </script>
 </body>
 </html>
